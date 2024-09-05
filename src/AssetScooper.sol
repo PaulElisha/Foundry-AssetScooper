@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "./Interfaces/IAssetScooper.sol";
 import "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -8,7 +9,7 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IWETH.sol";
 
-contract AssetScooper is ReentrancyGuard {
+contract AssetScooper is IAssetScooper, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     address private immutable i_owner;
@@ -18,10 +19,11 @@ contract AssetScooper is ReentrancyGuard {
     IWETH private immutable weth;
     IUniswapV2Router02 private immutable uniswapRouter;
 
-    event TokenSwapped(
-        address indexed user,
-        address indexed tokenA,
+    event TokensSwapped(
+        address indexed sender,
+        address tokenA,
         uint256 amountIn,
+        address indexed tokenB,
         uint256 indexed amountOut
     );
 
@@ -116,7 +118,13 @@ contract AssetScooper is ReentrancyGuard {
             revert AssetScooper__InsufficientOutputAmount();
         }
 
-        emit TokenSwapped(msg.sender, tokenIn, amountIn, amountOut);
+        emit TokensSwapped(
+            msg.sender,
+            tokenIn,
+            amountIn,
+            address(weth),
+            amountOut
+        );
     }
 
     receive() external payable {}
