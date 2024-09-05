@@ -14,9 +14,9 @@ error AssetScooper__ZeroAddressToken();
 
 contract AssetScooperTest is Test, Constants {
     AssetScooper private assetScooper;
-    IERC20 private usdc;
-    IERC20 private shib;
-    address private USER = address(0xf584F8728B874a6a5c7A8d4d387C9aae9172D621);
+    IERC20 private aero;
+    IERC20 private wgc;
+    address private USER = address(0xe6A7d4082a79bb196597ea42F75ddD85e41F599C);
     address private USER_2 = makeAddr("USER_2");
 
     uint256 internal mainnetFork;
@@ -25,8 +25,8 @@ contract AssetScooperTest is Test, Constants {
         DeployAssetScooper deployAssetScooper = new DeployAssetScooper();
         assetScooper = deployAssetScooper.run();
 
-        usdc = IERC20(USDC);
-        shib = IERC20(SHIB);
+        aero = IERC20(AERO);
+        wgc = IERC20(WGC);
 
         string
             memory fork_url = "https://base-mainnet.g.alchemy.com/v2/0yadBjzhtsJKAysNRGkKbCwD7qpmRknG";
@@ -45,92 +45,111 @@ contract AssetScooperTest is Test, Constants {
     function testSweep() public {
         vm.startPrank(USER);
 
-        uint256 usdcBalance = usdc.balanceOf(USER);
-        uint256 shibBalance = shib.balanceOf(USER);
-        console.log("USDC Balance:", usdcBalance);
-        console.log("SHIB Balance:", shibBalance);
+        uint256 aeroBalanceBefore = aero.balanceOf(USER);
+        uint256 wgcBalanceBefore = wgc.balanceOf(USER);
+        console.log("AERO Balance Before:", aeroBalanceBefore);
+        console.log("WGC Balance Before:", wgcBalanceBefore);
 
-        usdc.approve(address(assetScooper), usdcBalance);
-        shib.approve(address(assetScooper), shibBalance);
+        aero.approve(address(assetScooper), aeroBalanceBefore);
+        wgc.approve(address(assetScooper), wgcBalanceBefore);
         console.log(
-            "USDC Allowance:",
-            usdc.allowance(USER, address(assetScooper))
+            "AERO Allowance:",
+            aero.allowance(USER, address(assetScooper))
         );
         console.log(
-            "SHIB Allowance:",
-            shib.allowance(USER, address(assetScooper))
+            "WGC Allowance:",
+            wgc.allowance(USER, address(assetScooper))
         );
 
         address[] memory tokens = new address[](2);
-        tokens[0] = address(usdc);
-        tokens[1] = address(shib);
+        tokens[0] = address(aero);
+        tokens[1] = address(wgc);
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 1;
         amounts[1] = 1;
 
         assetScooper.sweepTokens(tokens, amounts);
+
+        uint256 aeroBalanceAfter = aero.balanceOf(USER);
+        uint256 wgcBalanceAfter = wgc.balanceOf(USER);
+        console.log("AERO Balance After:", aeroBalanceAfter);
+        console.log("WGC Balance After:", wgcBalanceAfter);
+
+        uint256 bal = address(USER).balance;
+        console.log("User's Weth Balance:", bal);
+
+        assertGt(aeroBalanceBefore, aeroBalanceAfter);
+        assertGt(wgcBalanceBefore, wgcBalanceAfter);
+        assertGt(bal, 0);
         vm.stopPrank();
     }
 
     function testSweepRevertsWithInsufficientUserBalance() public {
         vm.startPrank(USER);
 
-        uint256 usdcBalance = usdc.balanceOf(USER);
-        uint256 shibBalance = shib.balanceOf(USER);
-        console.log("USDC Balance:", usdcBalance);
-        console.log("SHIB Balance:", shibBalance);
+        uint256 aeroBalance = aero.balanceOf(USER);
+        uint256 wgcBalance = wgc.balanceOf(USER);
+        console.log("AERO Balance:", aeroBalance);
+        console.log("WGC Balance:", wgcBalance);
 
-        usdc.transfer(USER_2, usdcBalance);
-        shib.transfer(USER_2, shibBalance);
+        aero.transfer(USER_2, aeroBalance);
+        wgc.transfer(USER_2, wgcBalance);
 
-        usdc.approve(address(assetScooper), usdcBalance);
-        shib.approve(address(assetScooper), shibBalance);
+        uint256 aeroBalanceAfter = aero.balanceOf(USER);
+        uint256 wgcBalanceAfter = wgc.balanceOf(USER);
+        console.log("AERO Balance After:", aeroBalanceAfter);
+        console.log("WGC Balance After:", wgcBalanceAfter);
+
+        aero.approve(address(assetScooper), aeroBalance);
+        wgc.approve(address(assetScooper), wgcBalance);
         console.log(
-            "USDC Allowance:",
-            usdc.allowance(USER, address(assetScooper))
+            "AERO Allowance:",
+            aero.allowance(USER, address(assetScooper))
         );
         console.log(
-            "SHIB Allowance:",
-            shib.allowance(USER, address(assetScooper))
+            "WGC Allowance:",
+            wgc.allowance(USER, address(assetScooper))
         );
 
         address[] memory tokens = new address[](2);
-        tokens[0] = address(usdc);
-        tokens[1] = address(shib);
+        tokens[0] = address(aero);
+        tokens[1] = address(wgc);
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 1;
         amounts[1] = 1;
 
+        assertLt(aeroBalanceAfter, aeroBalance);
+        assertLt(wgcBalanceAfter, wgcBalance);
+
         vm.expectRevert(AssetScooper__InsufficientUserBalance.selector);
         assetScooper.sweepTokens(tokens, amounts);
-
         vm.stopPrank();
     }
 
     function testSweepRevertsWithMisMatchLength() public {
         vm.startPrank(USER);
 
-        uint256 usdcBalance = usdc.balanceOf(USER);
-        uint256 shibBalance = shib.balanceOf(USER);
-        console.log("USDC Balance:", usdcBalance);
-        console.log("SHIB Balance:", shibBalance);
+        uint256 aeroBalance = aero.balanceOf(USER);
+        uint256 wgcBalance = wgc.balanceOf(USER);
+        console.log("AERO Balance:", aeroBalance);
+        console.log("WFC Balance:", wgcBalance);
 
-        usdc.approve(address(assetScooper), usdcBalance);
-        shib.approve(address(assetScooper), shibBalance);
+        aero.approve(address(assetScooper), aeroBalance);
+        wgc.approve(address(assetScooper), wgcBalance);
         console.log(
-            "USDC Allowance:",
-            usdc.allowance(USER, address(assetScooper))
+            "AERO Allowance:",
+            aero.allowance(USER, address(assetScooper))
         );
         console.log(
-            "SHIB Allowance:",
-            shib.allowance(USER, address(assetScooper))
+            "wgc Allowance:",
+            wgc.allowance(USER, address(assetScooper))
         );
 
         address[] memory tokens = new address[](2);
-        tokens[0] = address(usdc);
-        tokens[1] = address(shib);
+        tokens[0] = address(aero);
+        tokens[1] = address(wgc);
 
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 1;

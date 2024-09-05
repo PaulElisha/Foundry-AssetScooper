@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Script.sol";
 import "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -9,7 +8,7 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IWETH.sol";
 
-contract AssetScooper is ReentrancyGuard, Script {
+contract AssetScooper is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     address private immutable i_owner;
@@ -72,8 +71,7 @@ contract AssetScooper is ReentrancyGuard, Script {
         if (!success || data.length <= 0) {
             revert AssetScooper__UnsuccessfulDecimalCall();
         }
-        uint256 tokenDecimals = abi.decode(data, (uint256));
-        console.log(tokenDecimals);
+        /*uint256 tokenDecimals*/ abi.decode(data, (uint256));
 
         amountIn = tokenBalance;
 
@@ -106,11 +104,11 @@ contract AssetScooper is ReentrancyGuard, Script {
         uint256 minimumOutputAmount
     ) private returns (uint256 amountOut) {
         uint256 tokenBalance = _getTokenBalance(tokenIn, msg.sender);
-        console.log(tokenBalance);
+
         if (tokenBalance <= 0) revert AssetScooper__InsufficientUserBalance();
 
         uint256 amountIn = _getAmountIn(tokenIn, tokenBalance);
-        console.log(amountIn);
+
         IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
         IERC20(tokenIn).approve(address(uniswapRouter), amountIn);
 
