@@ -78,6 +78,10 @@ contract AssetScooper is ReentrancyGuard {
         return amountIn;
     }
 
+    function normalizeAddress(address addr) private pure returns (address) {
+        return address(uint160(addr));
+    }
+
     function sweepTokens(
         address[] calldata tokenAddresses,
         uint256[] calldata minAmountOut
@@ -94,7 +98,8 @@ contract AssetScooper is ReentrancyGuard {
         for (uint256 i = 0; i < tokenAddresses.length; i++) {
             if (tokenAddresses[i] == address(0))
                 revert AssetScooper__ZeroAddressToken();
-            totalEth += _swap(tokenAddresses[i], minAmountOut[i]);
+            address swapToken = normalizeAddress(tokenAddresses[i]);
+            totalEth += _swap(swapToken, minAmountOut[i]);
         }
         weth.transfer(msg.sender, totalEth);
     }

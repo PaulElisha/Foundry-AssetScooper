@@ -8,6 +8,6 @@ abstract contract Constants {
     address public constant ROUTER_ADDRESS =
         0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24;
 
-    address public constant AERO = 0x940181a94A35A4569E4529A3CDfB74e38FD98631;
+    address public constant AERO = 0x940181a94A35A4569E4529A3CDfB74e38FD98631; // 0x940181a94a35a4569e4529a3cdfb74e38fd98631
     address public constant WGC = 0xfB18511F1590a494360069F3640c27d55c2B5290;
 }
