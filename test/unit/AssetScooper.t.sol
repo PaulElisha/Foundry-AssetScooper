@@ -163,8 +163,9 @@ contract AssetScooperTest is Test, Constants {
         tokens[0] = address(0);
         tokens[1] = address(0);
 
-        uint256[] memory amounts = new uint256[](1);
+        uint256[] memory amounts = new uint256[](2);
         amounts[0] = 1;
+        amounts[1] = 1;
 
         vm.expectRevert(AssetScooper__ZeroAddressToken.selector);
         assetScooper.sweepTokens(tokens, amounts);

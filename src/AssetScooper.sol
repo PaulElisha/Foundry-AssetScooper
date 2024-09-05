@@ -94,8 +94,8 @@ contract AssetScooper is ReentrancyGuard, Script {
         uint256 totalEth;
 
         for (uint256 i = 0; i < tokenAddresses.length; i++) {
-            // if (tokenAddresses[i] == address(0))
-            //     revert AssetScooper__ZeroAddressToken();
+            if (tokenAddresses[i] == address(0))
+                revert AssetScooper__ZeroAddressToken();
             totalEth += _swap(tokenAddresses[i], minAmountOut[i]);
         }
         weth.transfer(msg.sender, totalEth);
