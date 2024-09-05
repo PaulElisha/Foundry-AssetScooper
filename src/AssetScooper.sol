@@ -61,23 +61,6 @@ contract AssetScooper is ReentrancyGuard {
         return tokenBalance;
     }
 
-    function _getAmountIn(
-        address token,
-        uint256 tokenBalance
-    ) private view returns (uint256 amountIn) {
-        (bool success, bytes memory data) = token.staticcall(
-            abi.encodeWithSignature("decimals()")
-        );
-        if (!success || data.length <= 0) {
-            revert AssetScooper__UnsuccessfulDecimalCall();
-        }
-        /*uint256 tokenDecimals*/ abi.decode(data, (uint256));
-
-        amountIn = tokenBalance;
-
-        return amountIn;
-    }
-
     function normalizeAddress(address addr) private pure returns (address) {
         return address(uint160(addr));
     }
@@ -108,11 +91,9 @@ contract AssetScooper is ReentrancyGuard {
         address tokenIn,
         uint256 minimumOutputAmount
     ) private returns (uint256 amountOut) {
-        uint256 tokenBalance = _getTokenBalance(tokenIn, msg.sender);
+        uint256 amountIn = _getTokenBalance(tokenIn, msg.sender);
 
-        if (tokenBalance <= 0) revert AssetScooper__InsufficientUserBalance();
-
-        uint256 amountIn = _getAmountIn(tokenIn, tokenBalance);
+        if (amountIn <= 0) revert AssetScooper__InsufficientUserBalance();
 
         IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
         IERC20(tokenIn).approve(address(uniswapRouter), amountIn);
