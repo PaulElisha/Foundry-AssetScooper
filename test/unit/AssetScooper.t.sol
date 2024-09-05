@@ -6,7 +6,6 @@ import "../../src/AssetScooper.sol";
 import "openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../script/DeployAssetScooper.s.sol";
 import "../../src/Constants.sol";
-import "@uniswap/v2-periphery/contracts/interfaces/IWETH.sol";
 
 error AssetScooper__InsufficientUserBalance();
 error AssetScooper__MisMatchLength();
@@ -19,7 +18,6 @@ contract AssetScooperTest is Test, Constants {
     IERC20 private shib;
     address private USER = address(0xf584F8728B874a6a5c7A8d4d387C9aae9172D621);
     address private USER_2 = makeAddr("USER_2");
-    IWETH private weth;
 
     uint256 internal mainnetFork;
 
