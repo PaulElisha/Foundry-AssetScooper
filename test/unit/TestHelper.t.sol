@@ -39,7 +39,7 @@ abstract contract TestHelper is Test, SignUtils {
             .PermitTransferFrom({
                 permitted: permittedTokens,
                 nonce: 0,
-                deadline: block.timestamp + 100
+                deadline: block.timestamp
             });
 
         // permit.permitted[0] = permittedTokens;
@@ -78,6 +78,7 @@ abstract contract TestHelper is Test, SignUtils {
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
         sig = getSig(v, r, s);
+        console.log("Signer", ecrecover(digest, v, r, s));
         // console.log("Test Helper: Sig", sig);
     }
 
