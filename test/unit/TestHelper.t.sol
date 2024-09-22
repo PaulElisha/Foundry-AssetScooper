@@ -8,16 +8,11 @@ import "../../src/AssetScooper.sol";
 import "sign-utils/SignUtils.sol";
 
 abstract contract TestHelper is Test, SignUtils {
-    struct SwapParams {
-        address tokenAddress;
-        uint256 minimumOutputAmount;
-    }
-
     function createSwapParams(
-        address _aero
+        IERC20 aero
     ) public pure returns (AssetScooper.SwapParams memory) {
         AssetScooper.SwapParams memory param = AssetScooper.SwapParams({
-            tokenAddress: _aero,
+            tokenAddress: address(aero),
             minimumOutputAmount: 0
         });
 
@@ -28,12 +23,11 @@ abstract contract TestHelper is Test, SignUtils {
         IERC20 token,
         AssetScooper assetScooper,
         address user
-    )
-        public
-        view
-        returns (AssetScooper.Permit2SignatureTransferDetails memory)
-    {
+    ) public view returns (AssetScooper.Permit2SignatureTransferData memory) {
         uint256 bal = token.balanceOf(user);
+
+        console.log("Test Helper: User Token Balance", bal);
+        console.log("Test Helper: User Token Address", address(token));
 
         ISignatureTransfer.TokenPermissions
             memory permittedTokens = ISignatureTransfer.TokenPermissions({
@@ -41,14 +35,14 @@ abstract contract TestHelper is Test, SignUtils {
                 amount: bal
             });
 
-        ISignatureTransfer.PermitBatchTransferFrom
-            memory permit = ISignatureTransfer.PermitBatchTransferFrom({
-                permitted: new ISignatureTransfer.TokenPermissions[](1),
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer
+            .PermitTransferFrom({
+                permitted: permittedTokens,
                 nonce: 0,
                 deadline: block.timestamp + 100
             });
 
-        permit.permitted[0] = permittedTokens;
+        // permit.permitted[0] = permittedTokens;
 
         ISignatureTransfer.SignatureTransferDetails
             memory transferDetail = ISignatureTransfer
@@ -57,21 +51,34 @@ abstract contract TestHelper is Test, SignUtils {
                     requestedAmount: bal
                 });
 
-        ISignatureTransfer.SignatureTransferDetails[]
-            memory transferDetails = new ISignatureTransfer.SignatureTransferDetails[](
-                1
-            );
+        // ISignatureTransfer.SignatureTransferDetails[]
+        //     memory transferDetails = new ISignatureTransfer.SignatureTransferDetails[](
+        //         1
+        //     );
 
-        transferDetails[0] = transferDetail;
+        // transferDetails[0] = transferDetail;
 
-        AssetScooper.Permit2SignatureTransferDetails
+        AssetScooper.Permit2SignatureTransferData
             memory signatureTransferData = AssetScooper
-                .Permit2SignatureTransferDetails({
+                .Permit2SignatureTransferData({
                     permit: permit,
-                    transferDetails: transferDetails
+                    transferDetails: transferDetail
                 });
 
         return signatureTransferData;
+    }
+
+    function constructSig(
+        ISignatureTransfer.PermitTransferFrom memory permit,
+        uint256 privKey
+    ) public view returns (bytes memory sig) {
+        bytes32 mhash = hashPermit(permit);
+
+        bytes32 digest = hashTypedData(mhash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
+        sig = getSig(v, r, s);
+        // console.log("Test Helper: Sig", sig);
     }
 
     function mkaddr(
@@ -86,13 +93,5 @@ abstract contract TestHelper is Test, SignUtils {
     function mkpk(string memory name) public pure returns (uint256 privateKey) {
         privateKey = uint256(keccak256(abi.encodePacked(name)));
         // address addr = address(uint160(uint256(keccak256(abi.encodePacked(name)))))
-    }
-
-    function getSigPacked(
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) internal pure returns (bytes memory) {
-        return abi.encodePacked(r, s, v);
     }
 }

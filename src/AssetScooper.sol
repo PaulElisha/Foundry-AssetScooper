@@ -9,28 +9,28 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IWETH.sol";
 import "permit2/interfaces/ISignatureTransfer.sol";
+import "permit2/interfaces/IPermit2.sol";
 import "permit2/Permit2.sol";
-import {console2} from "forge-std/console2.sol";
+import "forge-std/console2.sol";
 
 contract AssetScooper is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     address private immutable i_owner;
-
     string private constant i_version = "1.0.0";
 
     IWETH private immutable weth;
     IUniswapV2Router02 private immutable uniswapRouter;
-    Permit2 public immutable permit2;
+    ISignatureTransfer public immutable permit2;
 
     struct SwapParams {
         address tokenAddress;
         uint256 minimumOutputAmount;
     }
 
-    struct Permit2SignatureTransferDetails {
-        ISignatureTransfer.PermitBatchTransferFrom permit;
-        ISignatureTransfer.SignatureTransferDetails[] transferDetails;
+    struct Permit2SignatureTransferData {
+        ISignatureTransfer.PermitTransferFrom permit;
+        ISignatureTransfer.SignatureTransferDetails transferDetails;
     }
 
     event TokenSwapped(
@@ -53,7 +53,7 @@ contract AssetScooper is ReentrancyGuard {
     constructor(
         IWETH _weth,
         IUniswapV2Router02 _uniswapRouter,
-        Permit2 _permit2
+        ISignatureTransfer _permit2
     ) {
         i_owner = msg.sender;
         weth = _weth;
@@ -84,84 +84,100 @@ contract AssetScooper is ReentrancyGuard {
     }
 
     function sweepTokens(
-        SwapParams[] calldata params,
-        Permit2SignatureTransferDetails calldata _signatureTransferData,
-        bytes calldata signature
-    ) public nonReentrant {
-        if (
-            params.length != _signatureTransferData.permit.permitted.length ||
-            _signatureTransferData.permit.permitted.length !=
-            _signatureTransferData.transferDetails.length
-        ) revert AssetScooper__MisMatchLength();
+        SwapParams calldata params,
+        Permit2SignatureTransferData memory _signatureTransferData,
+        bytes memory signature
+    ) public {
+        // // Validate lengths of input parameters
+        // if (
+        //     // params.length != _signatureTransferData.permit.permitted.length ||
+        //     _signatureTransferData.permit.permitted.length !=
+        //     _signatureTransferData.transferDetails.length
+        // ) revert AssetScooper__MisMatchLength();
 
-        if (
-            params.length == 0 ||
-            _signatureTransferData.permit.permitted.length == 0 ||
-            _signatureTransferData.transferDetails.length == 0
-        ) revert AssetScooper__ZeroLengthArray();
+        // if (
+        //     // params.length == 0 ||
+        //     _signatureTransferData.permit.permitted.length == 0 ||
+        //     _signatureTransferData.transferDetails.length == 0
+        // ) revert AssetScooper__ZeroLengthArray();
 
-        uint256 amountOut;
+        // console2.log("Asset Scooper: Signature", signature);
+        // console2.log(
+        //     "Asset Scooper: Permit Struct",
+        //     _signatureTransferData.permit
+        // );
+
+        uint256 totalAmountOut; // Track total output amount
         IERC20 erc20;
-        uint256 tokenBalance;
 
-        for (uint256 i = 0; i < params.length; i++) {
-            if (params[i].tokenAddress == address(0)) {
-                revert AssetScooper__ZeroAddressToken();
-            }
+        // Make sure the payer has enough of the payment token
+        erc20 = IERC20(params.tokenAddress);
+        uint256 minimumAmountOut = params.minimumOutputAmount;
+        uint256 tokenBalance = _getTokenBalance(address(erc20), msg.sender);
 
-            if (
-                _signatureTransferData.permit.permitted[i].token !=
-                params[i].tokenAddress
-            ) {
-                revert AssetScooper__InvalidTokenAddress();
-            }
+        console2.log("Asset Scooper: User balance", tokenBalance);
 
-            if (_signatureTransferData.transferDetails[i].to != address(this)) {
-                revert AssetScooper__InvalidTransferDetails();
-            }
-
-            console2.log("Before.......................");
-            // Make sure the payer has enough of the payment token
-            erc20 = IERC20(params[i].tokenAddress);
-            uint256 minimumAmountOut = params[i].minimumOutputAmount;
-            tokenBalance = _getTokenBalance(address(erc20), msg.sender);
-            if (tokenBalance <= 0) {
-                revert AssetScooper__InsufficientUserBalance(tokenBalance);
-            }
-            console2.log("After balance check...............");
-
-            // Transfer token to this contract
-            permit2.permitTransferFrom(
-                _signatureTransferData.permit,
-                _signatureTransferData.transferDetails,
-                msg.sender,
-                signature
-            );
-            console2.log("Sender Address", msg.sender);
-            console2.log("App......................");
-            erc20.approve(address(uniswapRouter), tokenBalance);
-
-            address[] memory path = new address[](2);
-            path[0] = address(erc20);
-            path[1] = address(weth);
-
-            uint256[] memory amounts = uniswapRouter.swapExactTokensForTokens(
-                tokenBalance,
-                minimumAmountOut,
-                path,
-                address(this),
-                block.timestamp + 100
-            );
-
-            amountOut += amounts[1];
-
-            if (amountOut < minimumAmountOut) {
-                revert AssetScooper__InsufficientOutputAmount();
-            }
+        if (tokenBalance <= 0) {
+            revert AssetScooper__InsufficientUserBalance(tokenBalance);
         }
-        emit TokenSwapped(msg.sender, address(erc20), tokenBalance, amountOut);
 
-        weth.transfer(msg.sender, amountOut);
+        // Transfer tokens to this contract using Permit2's method
+        permit2.permitTransferFrom(
+            _signatureTransferData.permit,
+            _signatureTransferData.transferDetails,
+            msg.sender,
+            signature // Ensure this is the correct signature for the current transfer detail
+        );
+
+        console2.log("Asset Scooper: Sender Address", msg.sender);
+
+        // Approve Uniswap router to spend the tokens
+        erc20.approve(address(uniswapRouter), tokenBalance);
+
+        // Set up path for swapping tokens: ERC20 -> WETH
+        address[] memory path = new address[](2);
+        path[0] = address(erc20);
+        path[1] = address(weth);
+
+        // Execute the swap on Uniswap
+        uint256[] memory amounts = uniswapRouter.swapExactTokensForTokens(
+            tokenBalance,
+            minimumAmountOut,
+            path,
+            address(this),
+            block.timestamp + 100 // Allowing a small time window for the swap to complete
+        );
+
+        totalAmountOut += amounts[1]; // Accumulate total output amount
+
+        // Check if the output amount meets the minimum requirement
+        if (totalAmountOut < minimumAmountOut) {
+            revert AssetScooper__InsufficientOutputAmount();
+        }
+
+        emit TokenSwapped(msg.sender, address(erc20), tokenBalance, amounts[1]);
+
+        // for (uint256 i = 0; i < params.length; i++) {
+        //     if (params[i].tokenAddress == address(0)) {
+        //         revert AssetScooper__ZeroAddressToken();
+        //     }
+
+        //     // Validate token permissions
+        //     if (
+        //         _signatureTransferData.permit.permitted[i].token !=
+        //         params[i].tokenAddress
+        //     ) {
+        //         revert AssetScooper__InvalidTokenAddress();
+        //     }
+
+        //     // Ensure transfer details are directed to this contract
+        //     if (_signatureTransferData.transferDetails[i].to != address(this)) {
+        //         revert AssetScooper__InvalidTransferDetails();
+        //     }
+        // }
+
+        // Transfer the accumulated WETH to the user after all swaps are done
+        weth.transfer(msg.sender, totalAmountOut);
     }
 
     receive() external payable {}

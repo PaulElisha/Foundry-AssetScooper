@@ -5,7 +5,8 @@ import "forge-std/Script.sol";
 import "../src/AssetScooper.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IWETH.sol";
-import "permit2/Permit2.sol";
+import "permit2/interfaces/ISignatureTransfer.sol";
+import "permit2/interfaces/IPermit2.sol";
 import "../src/Constants.sol";
 
 contract DeployAssetScooper is Script, Constants {
@@ -14,7 +15,7 @@ contract DeployAssetScooper is Script, Constants {
         AssetScooper assetScooper = new AssetScooper(
             IWETH(WETH),
             IUniswapV2Router02(ROUTER_ADDRESS),
-            Permit2(PERMIT2)
+            ISignatureTransfer(PERMIT2)
         );
         vm.stopBroadcast();
 
