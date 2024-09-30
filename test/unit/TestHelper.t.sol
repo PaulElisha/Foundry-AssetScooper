@@ -5,9 +5,10 @@ import "forge-std/Test.sol";
 import "permit2/interfaces/ISignatureTransfer.sol";
 import "openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../src/AssetScooper.sol";
-import "sign-utils/SignUtils.sol";
+// import "sign-utils/SignUtils.sol";
+import "permit2/libraries/PermitHash.sol";
 
-abstract contract TestHelper is Test, SignUtils {
+abstract contract TestHelper is Test {
     function createSwapParams(
         IERC20 aero
     ) public pure returns (AssetScooper.SwapParams memory) {
@@ -72,14 +73,22 @@ abstract contract TestHelper is Test, SignUtils {
         ISignatureTransfer.PermitTransferFrom memory permit,
         uint256 privKey
     ) public view returns (bytes memory sig) {
-        bytes32 mhash = hashPermit(permit);
+        bytes32 mhash = PermitHash.hash(permit);
 
-        bytes32 digest = hashTypedData(mhash);
+        // bytes32 digest = PermitHash.hashTypedData(mhash);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, mhash);
         sig = getSig(v, r, s);
-        console.log("Signer", ecrecover(digest, v, r, s));
+        console.log("Signer", ecrecover(mhash, v, r, s));
         // console.log("Test Helper: Sig", sig);
+    }
+
+    function getSig(
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) internal pure returns (bytes memory sig) {
+        sig = bytes.concat(r, s, bytes1(v));
     }
 
     function mkaddr(
