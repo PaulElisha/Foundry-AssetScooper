@@ -85,8 +85,9 @@ contract AssetScooper is ReentrancyGuard {
 
     function sweepTokens(
         SwapParams calldata params,
-        Permit2SignatureTransferData memory _signatureTransferData,
-        bytes memory signature
+        ISignatureTransfer.PermitTransferFrom calldata permit,
+        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
+        bytes memory sig
     ) public {
         // // Validate lengths of input parameters
         // if (
@@ -120,13 +121,12 @@ contract AssetScooper is ReentrancyGuard {
         if (tokenBalance <= 0) {
             revert AssetScooper__InsufficientUserBalance(tokenBalance);
         }
-
         // Transfer tokens to this contract using Permit2's method
         permit2.permitTransferFrom(
-            _signatureTransferData.permit,
-            _signatureTransferData.transferDetails,
+            permit,
+            transferDetails,
             msg.sender,
-            signature // Ensure this is the correct signature for the current transfer detail
+            sig // Ensure this is the correct signature for the current transfer detail
         );
 
         console2.log("Asset Scooper: Sender Address", msg.sender);

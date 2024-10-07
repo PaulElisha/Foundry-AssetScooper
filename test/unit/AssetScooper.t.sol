@@ -9,6 +9,7 @@ import "../../src/Constants.sol";
 import "./TestHelper.t.sol";
 import "../mocks/MockERC20.sol";
 import "forge-std/console2.sol";
+import "permit2/interfaces/ISignatureTransfer.sol";
 
 error AssetScooper__InsufficientUserBalance();
 error AssetScooper__MisMatchLength();
@@ -31,7 +32,8 @@ contract AssetScooperTest is Test, Constants, TestHelper {
     uint256 internal mainnetFork;
 
     AssetScooper.SwapParams params;
-    AssetScooper.Permit2SignatureTransferData _signatureTransferData;
+    ISignatureTransfer.PermitTransferFrom permit;
+    ISignatureTransfer.SignatureTransferDetails transferDetail;
 
     function setUp() public {
         DeployAssetScooper deployAssetScooper = new DeployAssetScooper();
@@ -39,6 +41,7 @@ contract AssetScooperTest is Test, Constants, TestHelper {
 
         privateKey = vm.envUint("PRIVATE_KEY");
         userA = vm.addr(privateKey);
+        console2.log(userA);
 
         aero = IERC20(AERO);
         wgc = IERC20(WGC);
@@ -56,21 +59,20 @@ contract AssetScooperTest is Test, Constants, TestHelper {
     }
 
     function testSweep() public {
-        _signatureTransferData = createSignatureTransferData(
+        vm.startPrank(userA);
+        (permit, transferDetail) = createSignatureTransferData(
             aero,
             assetScooper,
             userA
         );
 
-        sig = constructSig(_signatureTransferData.permit, privateKey);
+        sig = constructSig(permit, userA, privateKey);
 
         AssetScooper.SwapParams memory param = createSwapParams(aero);
 
         params = param;
 
-        vm.startPrank(userA);
-
-        assetScooper.sweepTokens(params, _signatureTransferData, sig);
+        assetScooper.sweepTokens(params, permit, transferDetail, sig);
 
         vm.stopPrank();
     }
